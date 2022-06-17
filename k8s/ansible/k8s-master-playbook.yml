@@ -1,0 +1,144 @@
+---
+- name: Setup k8s MASTER hosts
+  remote_user: woakley
+  become: yes
+  hosts: master-2
+  vars_files:
+  - group_vars/k8s_vars.yml
+
+  tasks:
+
+  - name: perform system update
+    apt:
+      force_apt_get: yes
+      name: "*"
+      state: latest
+      update_cache: yes
+      cache_valid_time: 3600
+    notify: Reboot host and wait for it to restart
+
+# do we need these?
+  - name: add apt packages
+    apt:
+      name: 
+      - apt-transport-https
+      - ca-certificates 
+      state: present
+
+  - name: Disable SWAP
+    shell: |
+      swapoff -a
+
+  - name: Disable SWAP in fstab 
+    replace:
+      path: /etc/fstab
+      regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+      replace: '# \1'
+
+  - name: Download k8s apt GPG key
+    get_url:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      dest: /usr/share/keyrings/kubernetes-archive-keyring.gpg 
+
+  - name: create kubernetes apt sources file
+    file:
+      path: "/etc/apt/sources.list.d/kubernetes.list"
+      state: touch
+
+  - name: add contents to kubernetes apt sources file
+    lineinfile:
+      path: /etc/apt/sources.list.d/kubernetes.list
+      state: present
+      insertafter: EOF
+      line: "{{ apt_source_kubernetes }}"
+
+  - name: Install K8s tools
+    apt:
+      name: 
+      - kubelet 
+      - kubeadm 
+      - kubectl
+      state: present
+      update_cache: yes
+
+  - name: make bridge netfilter driver persistent
+    lineinfile:
+      path: /etc/modules-load.d/modules.conf
+      backup: yes
+      state: present
+      insertafter: EOF
+      line: br_netfilter
+
+  - name: Load bridge netfilter module
+    command: modprobe -a br_netfilter
+
+  - name: Adding k8s required network settings to sysctl
+    lineinfile:
+      path: /etc/sysctl.conf
+      backup: yes
+      state: present
+      insertafter: EOF
+      line: '{{ item }}'
+    with_items:
+      - 'net.bridge.bridge-nf-call-iptables=1'
+      - 'net.ipv4.ip_forward=1'
+
+  - name: Reload sysctl
+    command: sysctl -p
+
+  - name: create CRI-O apt sources file
+    file:
+      path: "/etc/apt/sources.list.d/kubernetes.list"
+      state: touch
+
+### Install CRI-O
+# https://github.com/cri-o/cri-o/blob/main/install.md#starting-cri-o
+  - name: add contents to libcontainers_archive apt sources file
+    lineinfile:
+      path: /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+      create: yes
+      state: present
+      insertafter: EOF
+      line: "{{ apt_source_libcontainers_archive }}"
+
+  - name: add contents to crio_archive apt sources file
+    lineinfile:
+      path: /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:1.24.list
+      create: yes
+      state: present
+      insertafter: EOF
+      line: "{{ apt_source_crio_archive }}"
+
+  - name: Download libcontainers_archive apt GPG key
+    apt_key:
+      url: https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_20.04/Release.key
+      state: present
+
+  - name: Download crio_archive apt GPG key
+    apt_key:
+      url: https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.24:/1.24.1/xUbuntu_20.04/Release.key
+      state: present
+
+  - name: Install CRI-O
+    apt:
+      name: 
+      - cri-o 
+      - cri-o-runc
+      state: present
+      update_cache: yes
+
+#systemctl enable crio
+  - name: Enable service crio and ensure it is not masked
+    systemd:
+      name: crio
+      enabled: yes
+      masked: no
+
+#systemctl start crio
+  - name: Start crio service
+    systemd:
+      name: crio
+      started: yes
+
+#sudo kubeadm init
+
