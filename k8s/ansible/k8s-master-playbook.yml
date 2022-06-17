@@ -1,10 +1,11 @@
 ---
-- name: Setup k8s MASTER hosts
+- name: Setup k8s WORKER hosts
   remote_user: woakley
   become: yes
-  hosts: master-2
+  hosts: masters
   vars_files:
   - group_vars/k8s_vars.yml
+
 
   tasks:
 
@@ -17,7 +18,6 @@
       cache_valid_time: 3600
     notify: Reboot host and wait for it to restart
 
-# do we need these?
   - name: add apt packages
     apt:
       name: 
@@ -110,14 +110,22 @@
       line: "{{ apt_source_crio_archive }}"
 
   - name: Download libcontainers_archive apt GPG key
-    apt_key:
+    get_url:
       url: https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_20.04/Release.key
-      state: present
+      dest: /tmp/libcontainers-archive-keyring.key
 
   - name: Download crio_archive apt GPG key
-    apt_key:
+    get_url:
       url: https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.24:/1.24.1/xUbuntu_20.04/Release.key
-      state: present
+      dest: /tmp/libcontainers-crio-archive-keyring.key
+
+  - name: GPG dearmor libcontainers_archive key
+    shell: |
+      gpg --batch --yes --dearmor -o /usr/share/keyrings/libcontainers-archive-keyring.gpg /tmp/libcontainers-archive-keyring.key
+
+  - name: GPG dearmor crio_archive key
+    shell: |
+      gpg --batch --yes --dearmor -o /usr/share/keyrings/libcontainers-crio-archive-keyring.gpg /tmp/libcontainers-crio-archive-keyring.key
 
   - name: Install CRI-O
     apt:
@@ -138,7 +146,20 @@
   - name: Start crio service
     systemd:
       name: crio
-      started: yes
+      state: enabled 
 
-#sudo kubeadm init
+#kubeadm init
+#  - name: Add host to k8s cluster - DO THIS MANUALLY FOR NOW
+
+
+  handlers:
+
+  - name: Reboot host and wait for it to restart
+    reboot:
+      msg: "Reboot initiated by Ansible"
+      connect_timeout: 5
+      reboot_timeout: 600
+      pre_reboot_delay: 0
+      post_reboot_delay: 30
+      test_command: whoami
 

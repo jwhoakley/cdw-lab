@@ -1,0 +1,5 @@
+https://projectcalico.docs.tigera.io/getting-started/kubernetes/self-managed-onprem/onpremises
+
+https://projectcalico.docs.tigera.io/maintenance/clis/calicoctl/install
+
+
