@@ -2,3 +2,4 @@ inventory.yml
 ansible-readme.txt
 gather-facts.yml
 *.swp
+files

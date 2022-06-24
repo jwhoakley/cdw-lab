@@ -1,5 +1,5 @@
 ---
-- name: Setup k8s WORKER hosts
+- name: Setup k8s MASTER hosts
   remote_user: woakley
   become: yes
   hosts: masters
@@ -141,12 +141,13 @@
       name: crio
       enabled: yes
       masked: no
+      state: started
 
 #systemctl start crio
-  - name: Start crio service
-    systemd:
-      name: crio
-      state: enabled 
+#  - name: Start crio service
+#    systemd:
+#      name: crio
+#      state: started
 
 #kubeadm init
 #  - name: Add host to k8s cluster - DO THIS MANUALLY FOR NOW

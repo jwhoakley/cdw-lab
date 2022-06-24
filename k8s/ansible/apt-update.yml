@@ -14,7 +14,7 @@
       state: latest
       update_cache: yes
       cache_valid_time: 3600
-#    notify: Reboot host and wait for it to restart
+    notify: Reboot host and wait for it to restart
 
 
   handlers:
