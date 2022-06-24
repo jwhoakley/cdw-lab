@@ -1,0 +1,31 @@
+---
+- name: Setup ssh on hosts
+  remote_user: woakley
+  become: yes
+  hosts: all
+#  vars_files:
+#  - group_vars/
+#  - group_vars/docker_vault.yml
+
+
+  tasks:
+
+  - name: create woakley ssh directory
+    file:
+      path: /home/woakley/.ssh
+      state: directory
+      mode: '0700'
+
+  - name: Copy file with owner and permissions
+    copy:
+      src: /home/woakley/Home_LaB/ansible/files/authorized_keys
+      dest: /home/woakley/.ssh/authorized_keys
+      owner: woakley
+      group: woakley
+      mode: '0600'
+
+#  - name: change pi user password
+#    user:
+#      name: pi
+#      state: present
+#      password: "{{ vault_woakley_password }}"
